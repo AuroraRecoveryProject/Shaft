@@ -2,9 +2,29 @@
 #include "utils_macos.h"
 
 #include <__memory/voidify.h>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
+#include <utility>
+#include <vector>
+
+
+#include "unicode/uclean.h"
+#include "unicode/udata.h"
+#include "unicode/utypes.h"
+
+#undef udata_setCommonData
+#undef u_init
+extern "C" {
+void udata_setCommonData(const void *data, UErrorCode *err);
+void u_init(UErrorCode *status);
+extern const unsigned char _binary_build_embedded_assets_icudtl_dat_start[];
+extern const unsigned char _binary_build_embedded_assets_icudtl_dat_end[];
+extern const unsigned char _binary_build_embedded_assets_Roboto_Regular_ttf_start[];
+extern const unsigned char _binary_build_embedded_assets_Roboto_Regular_ttf_end[];
+}
 
 using namespace skia::textlayout;
 
@@ -27,6 +47,8 @@ template void *__voidify<skia::textlayout::FontArguments>(skia::textlayout::Font
 auto fontMgr = SkFontMgr_New_CoreText(nullptr);
 #elif defined(SK_BUILD_FOR_WIN)
 auto fontMgr = SkFontMgr_New_DirectWrite(nullptr);
+#elif defined(__ANDROID__)
+auto fontMgr = SkFontMgr_New_Custom_Directory("/system/fonts");
 #elif defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
 auto fontMgr = SkFontMgr_New_FontConfig(nullptr);
 #else
@@ -34,6 +56,104 @@ sk_sp<SkFontMgr> fontMgr = nullptr;
 #endif
 
 auto typefaceProvider = sk_make_sp<TypefaceFontProvider>();
+
+void skia_init_icu_from_file_once()
+{
+    static bool attempted = false;
+    static std::vector<uint8_t> icuData;
+    static std::vector<std::max_align_t> embeddedIcuData;
+    if (attempted) {
+        return;
+    }
+    attempted = true;
+
+    const auto *embeddedStart = _binary_build_embedded_assets_icudtl_dat_start;
+    const auto *embeddedEnd = _binary_build_embedded_assets_icudtl_dat_end;
+    const auto embeddedSize = static_cast<size_t>(embeddedEnd - embeddedStart);
+    UErrorCode embeddedStatus = U_ZERO_ERROR;
+    if (embeddedSize > 0) {
+        const auto unitSize = sizeof(std::max_align_t);
+        embeddedIcuData.resize((embeddedSize + unitSize - 1) / unitSize);
+        std::memcpy(embeddedIcuData.data(), embeddedStart, embeddedSize);
+        udata_setCommonData(embeddedIcuData.data(), &embeddedStatus);
+        if (U_SUCCESS(embeddedStatus)) {
+            u_init(&embeddedStatus);
+        }
+        if (U_SUCCESS(embeddedStatus)) {
+            return;
+        }
+        embeddedIcuData.clear();
+    }
+
+    const char *paths[] = {"/tmp/icudtl.dat", "icudtl.dat"};
+    FILE *file = nullptr;
+    for (const char *path : paths) {
+        file = std::fopen(path, "rb");
+        if (file != nullptr) {
+            break;
+        }
+    }
+    if (file == nullptr) {
+        return;
+    }
+
+    std::fseek(file, 0, SEEK_END);
+    const long size = std::ftell(file);
+    std::fseek(file, 0, SEEK_SET);
+    if (size <= 0) {
+        std::fclose(file);
+        return;
+    }
+
+    icuData.resize(static_cast<size_t>(size));
+    const size_t read = std::fread(icuData.data(), 1, icuData.size(), file);
+    std::fclose(file);
+    if (read != icuData.size()) {
+        icuData.clear();
+        return;
+    }
+
+    UErrorCode status = U_ZERO_ERROR;
+    udata_setCommonData(icuData.data(), &status);
+    if (U_SUCCESS(status)) {
+        u_init(&status);
+    }
+}
+
+void register_embedded_roboto(FontCollection_sp &collection)
+{
+    const auto *start = _binary_build_embedded_assets_Roboto_Regular_ttf_start;
+    const auto *end = _binary_build_embedded_assets_Roboto_Regular_ttf_end;
+    const auto size = static_cast<size_t>(end - start);
+    if (size == 0) {
+        return;
+    }
+
+    auto data = SkData::MakeWithoutCopy(start, size);
+    sk_sp<SkTypeface> typeface = nullptr;
+    if (fontMgr) {
+        typeface = fontMgr->makeFromData(data);
+    }
+    if (!typeface) {
+        auto emptyFontMgr = SkFontMgr_New_Custom_Empty();
+        typeface = emptyFontMgr->makeFromData(data);
+    }
+    if (!typeface) {
+        return;
+    }
+
+    SkString familyName;
+    typeface->getFamilyName(&familyName);
+    if (familyName.isEmpty()) {
+        familyName.set("Roboto");
+    }
+
+    typefaceProvider->registerTypeface(typeface, familyName);
+    collection->setAssetFontManager(typefaceProvider);
+    collection->setDynamicFontManager(typefaceProvider);
+    collection->setDefaultFontManager(typefaceProvider, familyName.c_str());
+    collection->enableFontFallback();
+}
 
 ParagraphBuilder *paragraph_builder_new(ParagraphStyle &style, const FontCollection_sp &fontCollection)
 {
@@ -203,16 +323,36 @@ sk_sp<SkColorSpace> color_space_new_null()
 
 SkCanvas *sk_surface_get_canvas(const sk_sp<SkSurface> &surface)
 {
+    if (!surface) {
+        return nullptr;
+    }
     return surface->getCanvas();
+}
+
+SkSurface_sp sk_surface_make_raster_direct_rgba(int width, int height, void *pixels, size_t rowBytes)
+{
+    if (width <= 0 || height <= 0 || pixels == nullptr || rowBytes < static_cast<size_t>(width) * 4) {
+        return nullptr;
+    }
+    auto imageInfo = SkImageInfo::Make(width, height, kRGBA_8888_SkColorType, kPremul_SkAlphaType, SkColorSpace::MakeSRGB());
+    return SkSurfaces::WrapPixels(imageInfo, pixels, rowBytes);
+}
+
+void sk_surface_flush(SkSurface_sp &surface)
+{
+    (void)surface;
 }
 
 // MARK: - Font
 
 FontCollection_sp sk_fontcollection_new()
 {
+    skia_init_icu_from_file_once();
     auto collection = sk_make_sp<FontCollection>();
     collection->setDynamicFontManager(typefaceProvider);
     collection->setDefaultFontManager(fontMgr);
+    collection->enableFontFallback();
+    register_embedded_roboto(collection);
 #if defined(SK_BUILD_FOR_MAC)
     RegisterSystemFonts(*typefaceProvider);
 #endif
@@ -222,13 +362,29 @@ FontCollection_sp sk_fontcollection_new()
 
 void sk_fontcollection_register_typeface(FontCollection_sp &collection, SkTypeface_sp &typeface)
 {
+    if (!typeface) {
+        std::fprintf(stderr, "[CSkia] registerTypeface skipped: null typeface\n");
+        return;
+    }
     typefaceProvider->registerTypeface(typeface);
 }
 
 SkTypeface_sp sk_typeface_create_from_data(const FontCollection_sp &collection, const char *data, size_t length)
 {
     auto bytes = SkData::MakeWithCopy(data, length);
-    return collection->getFallbackManager()->makeFromData(bytes);
+    sk_sp<SkTypeface> typeface = nullptr;
+    if (fontMgr) {
+        typeface = fontMgr->makeFromData(bytes);
+    }
+    if (!typeface) {
+        auto emptyFontMgr = SkFontMgr_New_Custom_Empty();
+        typeface = emptyFontMgr->makeFromData(bytes);
+    }
+    if (!typeface) {
+        std::fprintf(stderr, "[CSkia] makeTypefaceFromData length=%zu result=null\n", length);
+        return nullptr;
+    }
+    return typeface;
 }
 
 std::vector<SkTypeface_sp> sk_fontcollection_find_typefaces(const FontCollection_sp &collection, const std::vector<SkString> &families, SkFontStyle style)

@@ -33,7 +33,11 @@ public class SkiaRenderer: Renderer {
     public var fontCollection: FontCollection { _fontCollection }
 }
 
-#if canImport(Metal)
+#if os(Android)
+    public func defaultSkiaRenderer() -> Renderer {
+        fatalError("defaultSkiaRenderer is unavailable on Android recovery; use RecoverySkiaBackend.")
+    }
+#elseif canImport(Metal)
     import Metal
     public func defaultSkiaRenderer() -> Renderer {
         let metalDevice = MTLCreateSystemDefaultDevice()!

@@ -6,6 +6,7 @@ import CSkia
 import Foundation
 import Shaft
 
+#if !os(Android)
 /// An implementation of ``Renderer`` using Skia as the backend.
 public class SkiaGLRenderer: SkiaRenderer, GLRenderer {
     /// Cached GrDirectContext for creating surfaces.
@@ -46,3 +47,4 @@ public class SkiaGLRenderer: SkiaRenderer, GLRenderer {
         return SkiaCanvas(skSurface, glGrDirectContext, size)
     }
 }
+#endif

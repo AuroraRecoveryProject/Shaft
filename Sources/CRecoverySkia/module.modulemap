@@ -1,0 +1,4 @@
+module CRecoverySkia {
+  header "recovery_skia_bridge.h"
+  export *
+}

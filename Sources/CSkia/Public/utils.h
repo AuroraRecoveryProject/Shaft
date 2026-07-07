@@ -100,6 +100,11 @@
 #include <include/ports/SkFontMgr_directory.h>
 #endif
 
+#if defined(__ANDROID__)
+#include <include/ports/SkFontMgr_directory.h>
+#include <include/ports/SkFontMgr_empty.h>
+#endif
+
 #if !defined(CSKIA_UTILS_H)
 #define CSKIA_UTILS_H
 
@@ -211,6 +216,8 @@ void sk_path_reset(SkPath *path);
 // MARK: - Surface
 
 SkCanvas *sk_surface_get_canvas(const sk_sp<SkSurface> &surface);
+SkSurface_sp sk_surface_make_raster_direct_rgba(int width, int height, void *pixels, size_t rowBytes);
+void sk_surface_flush(SkSurface_sp &surface);
 
 
 // MARK: - Image

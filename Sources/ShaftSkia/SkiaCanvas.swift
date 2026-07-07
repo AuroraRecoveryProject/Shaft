@@ -11,10 +11,50 @@ public class SkiaCanvas: DirectCanvas {
     /// Creates a new canvas that draws to the given Skia canvas. It's the
     /// caller's responsibility to ensure that the canvas is valid during the
     /// lifetime of this object.
+    #if !os(Android)
     init(_ skSurface: SkSurface_sp, _ grDirectContext: GrDirectContext_sp, _ size: ISize) {
         self.skSurface = skSurface
-        self.skCanvas = sk_surface_get_canvas(skSurface)!
-        self.grDirectContext = grDirectContext
+        guard let skCanvas = sk_surface_get_canvas(skSurface) else {
+            fatalError("SkiaCanvas: SkSurface has no canvas")
+        }
+        self.skCanvas = skCanvas
+        #if os(Android)
+        self.flushImpl = {}
+        #else
+        self.flushImpl = {
+            var context = grDirectContext
+            gr_direct_context_flush_and_submit(&context, GrSyncCpu.yes)
+        }
+        #endif
+        self.size = size
+    }
+    #endif
+
+    /// Creates a CPU raster canvas over caller-owned RGBA pixels.
+    public init(
+        rasterPixels pixels: UnsafeMutableRawPointer,
+        rowBytes: Int,
+        size: ISize,
+        onFlush: @escaping () -> Void
+    ) {
+        let surface = sk_surface_make_raster_direct_rgba(
+            Int32(size.width),
+            Int32(size.height),
+            pixels,
+            rowBytes
+        )
+        guard let skCanvas = sk_surface_get_canvas(surface) else {
+            fatalError(
+                "SkiaCanvas: failed to wrap raster pixels size=\(size.width)x\(size.height) rowBytes=\(rowBytes) pixels=\(pixels)"
+            )
+        }
+        self.skSurface = surface
+        self.skCanvas = skCanvas
+        self.flushImpl = { [surface] in
+            var surface = surface
+            sk_surface_flush(&surface)
+            onFlush()
+        }
         self.size = size
     }
 
@@ -26,8 +66,8 @@ public class SkiaCanvas: DirectCanvas {
     /// The underlying Skia surface.
     private let skSurface: SkSurface_sp
 
-    /// The GrDirectContext that backs the skCanvas. Used to flush the canvas.
-    internal var grDirectContext: GrDirectContext_sp
+    /// Flushes the backing surface and presents it when needed.
+    private let flushImpl: () -> Void
 
     private var skPaint = SkPaint()
 
@@ -246,6 +286,6 @@ public class SkiaCanvas: DirectCanvas {
     }
 
     public func flush() {
-        gr_direct_context_flush_and_submit(&grDirectContext, GrSyncCpu.yes)
+        flushImpl()
     }
 }
