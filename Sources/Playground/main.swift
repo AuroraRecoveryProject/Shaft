@@ -1,18 +1,48 @@
 import Foundation
 import Shaft
 import ShaftCodeHighlight
-import ShaftSetup
 
-ShaftSetup.useDefault()
+#if os(Android)
+    import ShaftRecoverySkia
+#else
+    import ShaftSetup
+#endif
 
-#if DEBUG && canImport(SwiftReload)
+#if os(Android)
+    func recoveryScaleArgument() -> Float {
+        let arguments = CommandLine.arguments
+        for (index, argument) in arguments.enumerated() {
+            if argument == "--scale", index + 1 < arguments.count, let value = Float(arguments[index + 1]) {
+                return value
+            }
+            if argument.hasPrefix("--scale="), let value = Float(argument.dropFirst("--scale=".count)) {
+                return value
+            }
+        }
+        if let rawValue = ProcessInfo.processInfo.environment["SHAFT_RECOVERY_SCALE"],
+           let value = Float(rawValue)
+        {
+            return value
+        }
+        return 1.0
+    }
+
+
+
+    useRecoverySkiaBackend(
+        stopAfterFirstFrame: false,
+        scale: recoveryScaleArgument()
+    )
+#else
+    ShaftSetup.useDefault()
+#endif
+
+#if DEBUG && canImport(SwiftReload) && !os(Android)
     import SwiftReload
     LocalSwiftReloader(onReload: backend.scheduleReassemble).start()
 #endif
 
-runApp(
-    Playground()
-)
+runApp(Playground())
 
 final class Playground: StatefulWidget {
     func createState() -> PlaygroundState {
@@ -21,26 +51,30 @@ final class Playground: StatefulWidget {
 }
 
 final class PlaygroundState: State<Playground> {
-    let pageByTitle: [String: Widget] = [
-        "Observation": Concept_Observation(),
-        "ShaftKit": Concept_ShaftKit(),
-        "Backend": Concept_Backend(),
-        "Background": Kit_Background(),
-        "Button": Kit_Button(),
-        "Divider": Kit_Divider(),
-        "Image": Kit_Image(),
-        "Icons": Kit_Icons(),
-        "ListView": Kit_ListView(),
-        "Markdown": Kit_Markdown(),
-        "NavigationSplitView": Kit_NavigationSplitView(),
-        "Resizable": Kit_Resizable(),
-        "TextField": Kit_TextField(),
-        "Typography": Kit_Typography(),
-        "Hacker News": HackerNewsApp(),
-        "3D Cube": Demo_Cube(),
-        "Multi Window": Demo_MultiWindow(),
-            // "Text Field": TextFieldPage.init,
-    ]
+    let pageByTitle: [String: Widget] = {
+        var pages: [String: Widget] = [
+            "Observation": Concept_Observation(),
+            "ShaftKit": Concept_ShaftKit(),
+            "Backend": Concept_Backend(),
+            "Background": Kit_Background(),
+            "Button": Kit_Button(),
+            "Divider": Kit_Divider(),
+            "Image": Kit_Image(),
+            "Icons": Kit_Icons(),
+            "ListView": Kit_ListView(),
+            "Markdown": Kit_Markdown(),
+            "NavigationSplitView": Kit_NavigationSplitView(),
+            "Resizable": Kit_Resizable(),
+            "TextField": Kit_TextField(),
+            "Typography": Kit_Typography(),
+            "3D Cube": Demo_Cube(),
+        ]
+        #if !os(Android)
+        pages["Hacker News"] = HackerNewsApp()
+        pages["Multi Window"] = Demo_MultiWindow()
+        #endif
+        return pages
+    }()
 
     lazy var selectedPage = ValueNotifier("Observation")
 
@@ -65,7 +99,7 @@ final class PlaygroundState: State<Playground> {
     }
 
     override func build(context: BuildContext) -> Widget {
-        NavigationSplitView {
+        return NavigationSplitView {
             FixedListView(selection: selectedPage) {
                 Section {
                     Text("Concepts")
@@ -92,9 +126,13 @@ final class PlaygroundState: State<Playground> {
                 Section {
                     Text("Demos")
                 } content: {
+                    #if !os(Android)
                     MenuTile("Hacker News")
+                    #endif
                     MenuTile("3D Cube")
+                    #if !os(Android)
                     MenuTile("Multi Window")
+                    #endif
                     MenuTile("Video Codec")
                 }
             }
