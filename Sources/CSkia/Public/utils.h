@@ -1,94 +1,103 @@
+#if !defined(__ANDROID__)
+#define SK_GANESH
 #define SK_GL
 #define SK_METAL
-#define SK_GANESH
+#endif
 
-#include "include/android/SkAnimatedImage.h"
-#include "include/codec/SkAndroidCodec.h"
-#include "include/codec/SkBmpDecoder.h"
-#include "include/codec/SkGifDecoder.h"
-#include "include/codec/SkIcoDecoder.h"
-#include "include/codec/SkJpegDecoder.h"
-#include "include/codec/SkPngDecoder.h"
-#include "include/codec/SkWbmpDecoder.h"
-#include "include/codec/SkWebpDecoder.h"
-#include "include/core/SkBlurTypes.h"
-#include "include/core/SkCanvas.h"
-#include "include/core/SkColorSpace.h"
-#include "include/core/SkRefCnt.h"
-#include "include/core/SkData.h"
-#include "include/core/SkDocument.h"
-#include "include/core/SkFontMetrics.h"
-#include "include/core/SkFontMgr.h"
-#include "include/core/SkMaskFilter.h"
-#include "include/core/SkPath.h"
-#include "include/core/SkPathUtils.h"
-#include "include/core/SkPoint3.h"
-#include "include/core/SkRRect.h"
-#include "include/core/SkStream.h"
-#include "include/core/SkSurface.h"
-#include "include/core/SkTextBlob.h"
-#include "include/core/SkTypes.h"
+#include <include/android/SkAnimatedImage.h>
+#include <include/codec/SkAndroidCodec.h>
+#include <include/codec/SkBmpDecoder.h>
+#include <include/codec/SkGifDecoder.h>
+#include <include/codec/SkIcoDecoder.h>
+#include <include/codec/SkJpegDecoder.h>
+#include <include/codec/SkPngDecoder.h>
+#include <include/codec/SkWbmpDecoder.h>
+#include <include/codec/SkWebpDecoder.h>
+#include <include/core/SkBlurTypes.h>
+#include <include/core/SkCanvas.h>
+#include <include/core/SkColorSpace.h>
+#include <include/core/SkRefCnt.h>
+#include <include/core/SkData.h>
+#include <include/core/SkDocument.h>
+#include <include/core/SkFontMetrics.h>
+#include <include/core/SkFontMgr.h>
+#include <include/core/SkMaskFilter.h>
+#include <include/core/SkPath.h>
+#include <include/core/SkPathUtils.h>
+#include <include/core/SkPoint3.h>
+#include <include/core/SkRRect.h>
+#include <include/core/SkStream.h>
+#include <include/core/SkSurface.h>
+#include <include/core/SkTextBlob.h>
+#include <include/core/SkTypes.h>
 
-#include "include/docs/SkPDFDocument.h"
+#include <include/docs/SkPDFDocument.h>
 
-#include "include/effects/Sk1DPathEffect.h"
-#include "include/effects/Sk2DPathEffect.h"
-#include "include/effects/SkColorMatrixFilter.h"
-#include "include/effects/SkCornerPathEffect.h"
-#include "include/effects/SkDashPathEffect.h"
-#include "include/effects/SkDiscretePathEffect.h"
-#include "include/effects/SkGradientShader.h"
-#include "include/effects/SkHighContrastFilter.h"
-#include "include/effects/SkImageFilters.h"
-#include "include/effects/SkLumaColorFilter.h"
-#include "include/effects/SkPerlinNoiseShader.h"
-#include "include/effects/SkShaderMaskFilter.h"
-#include "include/effects/SkTableMaskFilter.h"
-#include "include/effects/SkTrimPathEffect.h"
+#include <include/effects/Sk1DPathEffect.h>
+#include <include/effects/Sk2DPathEffect.h>
+#include <include/effects/SkColorMatrixFilter.h>
+#include <include/effects/SkCornerPathEffect.h>
+#include <include/effects/SkDashPathEffect.h>
+#include <include/effects/SkDiscretePathEffect.h>
+#include <include/effects/SkGradientShader.h>
+#include <include/effects/SkHighContrastFilter.h>
+#include <include/effects/SkImageFilters.h>
+#include <include/effects/SkLumaColorFilter.h>
+#include <include/effects/SkPerlinNoiseShader.h>
+#include <include/effects/SkRuntimeEffect.h>
+#include <include/effects/SkShaderMaskFilter.h>
+#include <include/effects/SkTableMaskFilter.h>
+#include <include/effects/SkTrimPathEffect.h>
 
-#include "include/encode/SkJpegEncoder.h"
-#include "include/encode/SkPngEncoder.h"
-#include "include/encode/SkWebpEncoder.h"
+#include <include/encode/SkJpegEncoder.h>
+#include <include/encode/SkPngEncoder.h>
+#include <include/encode/SkWebpEncoder.h>
+
+#if !defined(__ANDROID__)
 // #include "include/gpu/ganesh/gl/GrGLBackendSurface.h"
-#include "include/gpu/ganesh/SkImageGanesh.h"
-#include "include/gpu/ganesh/SkSurfaceGanesh.h"
-#include "include/gpu/gl/GrGLAssembleInterface.h"
-#include "include/gpu/GrBackendSurface.h"
-#include "include/gpu/GrContextOptions.h"
-#include "include/gpu/GrDirectContext.h"
+#include <include/gpu/ganesh/SkImageGanesh.h>
+#include <include/gpu/ganesh/SkSurfaceGanesh.h>
+#include <include/gpu/GpuTypes.h>
+#include <include/gpu/ganesh/GrTypes.h>
+#include <include/gpu/ganesh/gl/GrGLAssembleInterface.h>
+#include <include/gpu/ganesh/GrBackendSurface.h>
+#include <include/gpu/ganesh/GrContextOptions.h>
+#include <include/gpu/ganesh/GrDirectContext.h>
 
-#include "include/gpu/ganesh/gl/GrGLBackendSurface.h"
-#include "include/gpu/ganesh/gl/GrGLDirectContext.h"
+#include <include/gpu/ganesh/gl/GrGLBackendSurface.h>
+#include <include/gpu/ganesh/gl/GrGLDirectContext.h>
+#endif
 
-#include "include/pathops/SkPathOps.h"
-#include "include/utils/SkParsePath.h"
+#include <include/pathops/SkPathOps.h>
+#include <include/utils/SkParsePath.h>
 
-#include "modules/skparagraph/include/Paragraph.h"
-#include "modules/skparagraph/include/ParagraphBuilder.h"
-#include "modules/skparagraph/include/FontCollection.h"
-#include "modules/skparagraph/include/TypefaceFontProvider.h"
+#include <modules/skparagraph/include/Paragraph.h>
+#include <modules/skparagraph/include/ParagraphBuilder.h>
+#include <modules/skparagraph/include/FontCollection.h>
+#include <modules/skparagraph/include/TypefaceFontProvider.h>
+#include <modules/skunicode/include/SkUnicode_icu.h>
 
-#include "src/core/SkYUVAInfoLocation.h"
+#include <src/core/SkYUVAInfoLocation.h>
 
 #if defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
-#include "include/ports/SkFontMgr_fontconfig.h"
+#include <include/ports/SkFontMgr_fontconfig.h>
 #endif
 
 #if defined(SK_BUILD_FOR_MAC)
-#include "include/ports/SkFontMgr_mac_ct.h"
-#include "include/gpu/ganesh/mtl/GrMtlDirectContext.h"
-#include "include/gpu/ganesh/mtl/GrMtlBackendSurface.h"
-#include "include/gpu/ganesh/mtl/GrMtlBackendContext.h"
+#include <include/ports/SkFontMgr_mac_ct.h>
+#include <include/gpu/ganesh/mtl/GrMtlDirectContext.h>
+#include <include/gpu/ganesh/mtl/GrMtlBackendSurface.h>
+#include <include/gpu/ganesh/mtl/GrMtlBackendContext.h>
 #elif defined(SK_BUILD_FOR_WIN)
-#include "include/ports/SkTypeface_win.h"
+#include <include/ports/SkTypeface_win.h>
 #endif
 
 #if defined(SK_FONTMGR_DIRECTWRITE_AVAILABLE)
-#include "include/ports/SkTypeface_win.h"
+#include <include/ports/SkTypeface_win.h>
 #endif
 
 #if defined(SK_FONTMGR_FREETYPE_DIRECTORY_AVAILABLE)
-#include "include/ports/SkFontMgr_directory.h"
+#include <include/ports/SkFontMgr_directory.h>
 #endif
 
 #if !defined(CSKIA_UTILS_H)
@@ -101,8 +110,10 @@ using namespace skia::textlayout;
 typedef sk_sp<SkSurface> SkSurface_sp;
 typedef sk_sp<SkImage> SkImage_sp;
 typedef sk_sp<SkAnimatedImage> SkAnimatedImage_sp;
+#if !defined(__ANDROID__)
 typedef sk_sp<const GrGLInterface> GrGLInterface_sp;
 typedef sk_sp<GrDirectContext> GrDirectContext_sp;
+#endif
 typedef sk_sp<FontCollection> FontCollection_sp;
 typedef sk_sp<ParagraphBuilder> ParagraphBuilder_sp;
 typedef sk_sp<SkTypeface> SkTypeface_sp;
@@ -124,6 +135,13 @@ void paragraph_builder_unref(ParagraphBuilder *builder);
 std::vector<Paragraph::FontInfo> paragraph_get_fonts(Paragraph *paragraph);
 void paragraph_layout(Paragraph *paragraph, float width);
 void paragraph_paint(Paragraph *paragraph, SkCanvas *canvas, float x, float y);
+float paragraph_get_width(Paragraph *paragraph);
+float paragraph_get_height(Paragraph *paragraph);
+float paragraph_get_longest_line(Paragraph *paragraph);
+float paragraph_get_min_intrinsic_width(Paragraph *paragraph);
+float paragraph_get_max_intrinsic_width(Paragraph *paragraph);
+float paragraph_get_alphabetic_baseline(Paragraph *paragraph);
+float paragraph_get_ideographic_baseline(Paragraph *paragraph);
 PositionWithAffinity paragraph_get_glyph_position_at_coordinate(Paragraph *paragraph, SkScalar dx, SkScalar dy);
 SkRange<size_t> paragraph_get_word_boundary(Paragraph *paragraph, unsigned offset);
 std::vector<LineMetrics> paragraph_get_line_metrics(Paragraph *paragraph);
@@ -194,6 +212,7 @@ void sk_path_reset(SkPath *path);
 
 SkCanvas *sk_surface_get_canvas(const sk_sp<SkSurface> &surface);
 
+
 // MARK: - Image
 
 SkAnimatedImage_sp sk_animated_image_create(const void *data, size_t length);
@@ -207,10 +226,12 @@ int sk_image_get_height(SkImage_sp &image);
 
 // MARK: - GL
 
+#if !defined(__ANDROID__)
 GrGLInterface_sp gr_glinterface_create_native_interface();
 GrDirectContext_sp gr_direct_context_make_gl(GrGLInterface_sp &glInterface);
 const GrDirectContext *gr_direct_context_unwrap(GrDirectContext_sp &context);
 void gr_direct_context_flush_and_submit(GrDirectContext_sp &context, GrSyncCpu syncCPU);
+#endif
 
 // MARK: - Metal
 

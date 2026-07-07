@@ -1,5 +1,10 @@
-#include "utils.h"
+#include "Public/utils.h"
 #include "utils_macos.h"
+
+#include <__memory/voidify.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 using namespace skia::textlayout;
 
@@ -8,6 +13,12 @@ template struct sk_sp<SkSurface>;
 template struct sk_sp<SkImage>;
 template struct sk_sp<SkTypeface>;
 template void SkSafeUnref<FontCollection>(FontCollection *obj);
+
+#if defined(__ANDROID__)
+namespace std {
+template void *__voidify<skia::textlayout::FontArguments>(skia::textlayout::FontArguments &);
+}
+#endif
 
 // MARK: - ParagraphBuilder
 
@@ -18,13 +29,16 @@ auto fontMgr = SkFontMgr_New_CoreText(nullptr);
 auto fontMgr = SkFontMgr_New_DirectWrite(nullptr);
 #elif defined(SK_FONTMGR_FONTCONFIG_AVAILABLE)
 auto fontMgr = SkFontMgr_New_FontConfig(nullptr);
+#else
+sk_sp<SkFontMgr> fontMgr = nullptr;
 #endif
 
 auto typefaceProvider = sk_make_sp<TypefaceFontProvider>();
 
 ParagraphBuilder *paragraph_builder_new(ParagraphStyle &style, const FontCollection_sp &fontCollection)
 {
-    auto result = ParagraphBuilder::make(style, fontCollection);
+    auto unicode = SkUnicodes::ICU::Make();
+    auto result = ParagraphBuilder::make(style, fontCollection, std::move(unicode));
     return result.release();
 }
 
@@ -68,6 +82,41 @@ void paragraph_layout(Paragraph *paragraph, float width)
 void paragraph_paint(Paragraph *paragraph, SkCanvas *canvas, float x, float y)
 {
     paragraph->paint(canvas, x, y);
+}
+
+float paragraph_get_width(Paragraph *paragraph)
+{
+    return paragraph->getMaxWidth();
+}
+
+float paragraph_get_height(Paragraph *paragraph)
+{
+    return paragraph->getHeight();
+}
+
+float paragraph_get_longest_line(Paragraph *paragraph)
+{
+    return paragraph->getLongestLine();
+}
+
+float paragraph_get_min_intrinsic_width(Paragraph *paragraph)
+{
+    return paragraph->getMinIntrinsicWidth();
+}
+
+float paragraph_get_max_intrinsic_width(Paragraph *paragraph)
+{
+    return paragraph->getMaxIntrinsicWidth();
+}
+
+float paragraph_get_alphabetic_baseline(Paragraph *paragraph)
+{
+    return paragraph->getAlphabeticBaseline();
+}
+
+float paragraph_get_ideographic_baseline(Paragraph *paragraph)
+{
+    return paragraph_get_alphabetic_baseline(paragraph);
 }
 
 PositionWithAffinity paragraph_get_glyph_position_at_coordinate(Paragraph *paragraph, SkScalar dx, SkScalar dy)
@@ -164,7 +213,6 @@ FontCollection_sp sk_fontcollection_new()
     auto collection = sk_make_sp<FontCollection>();
     collection->setDynamicFontManager(typefaceProvider);
     collection->setDefaultFontManager(fontMgr);
-
 #if defined(SK_BUILD_FOR_MAC)
     RegisterSystemFonts(*typefaceProvider);
 #endif
@@ -190,14 +238,15 @@ std::vector<SkTypeface_sp> sk_fontcollection_find_typefaces(const FontCollection
 
 SkTypeface_sp sk_fontcollection_default_fallback(const FontCollection_sp &collection, SkUnichar unicode, SkFontStyle style, const SkString &locale)
 {
-    return collection->defaultFallback(unicode, style, locale);
+    std::optional<FontArguments> fontArgs;
+    return collection->defaultFallback(unicode, style, locale, fontArgs);
 }
 
 std::vector<SkGlyphID> sk_typeface_get_glyphs(SkTypeface_sp &typeface, const SkUnichar *text, size_t length)
 {
     std::vector<SkGlyphID> glyphs;
     glyphs.resize(length);
-    typeface->unicharsToGlyphs(text, length, glyphs.data());
+    typeface->unicharsToGlyphs({text, length}, {glyphs.data(), length});
     return glyphs;
 }
 
@@ -427,6 +476,7 @@ int sk_image_get_height(SkImage_sp &image)
 
 // MARK: - GL
 
+#if !defined(__ANDROID__)
 GrGLInterface_sp gr_glinterface_create_native_interface()
 {
     return GrGLMakeNativeInterface();
@@ -446,6 +496,7 @@ void gr_direct_context_flush_and_submit(GrDirectContext_sp &context, GrSyncCpu s
 {
     context->flushAndSubmit(syncCPU);
 }
+#endif
 
 // MARK: - Metal
 

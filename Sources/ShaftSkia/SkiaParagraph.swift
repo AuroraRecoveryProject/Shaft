@@ -50,19 +50,19 @@ public class SkiaParagraph: Paragraph {
 
     private var paragraph: UnsafeMutablePointer<skia.textlayout.Paragraph>
 
-    public var width: Float { paragraph.pointee.getMaxWidth() }
+    public var width: Float { paragraph_get_width(paragraph) }
 
-    public var height: Float { paragraph.pointee.getHeight() }
+    public var height: Float { paragraph_get_height(paragraph) }
 
-    public var longestLine: Float { paragraph.pointee.getLongestLine() }
+    public var longestLine: Float { paragraph_get_longest_line(paragraph) }
 
-    public var minIntrinsicWidth: Float { paragraph.pointee.getMinIntrinsicWidth() }
+    public var minIntrinsicWidth: Float { paragraph_get_min_intrinsic_width(paragraph) }
 
-    public var maxIntrinsicWidth: Float { paragraph.pointee.getMaxIntrinsicWidth() }
+    public var maxIntrinsicWidth: Float { paragraph_get_max_intrinsic_width(paragraph) }
 
-    public var alphabeticBaseline: Float { paragraph.pointee.getAlphabeticBaseline() }
+    public var alphabeticBaseline: Float { paragraph_get_alphabetic_baseline(paragraph) }
 
-    public var ideographicBaseline: Float { paragraph.pointee.getIdeographicBaseline() }
+    public var ideographicBaseline: Float { paragraph_get_ideographic_baseline(paragraph) }
 
     public var didExceedMaxLines: Bool { paragraph.pointee.didExceedMaxLines() }
 

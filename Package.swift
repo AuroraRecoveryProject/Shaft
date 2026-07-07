@@ -4,6 +4,32 @@
 import Foundation
 import PackageDescription
 
+let recoverySkia = ProcessInfo.processInfo.environment["SHAFT_RECOVERY_SKIA"] == "1"
+
+func requiredRecoveryEnv(_ name: String) -> String {
+    if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty {
+        return value
+    }
+    if recoverySkia {
+        fatalError("\(name) must be set when SHAFT_RECOVERY_SKIA=1")
+    }
+    return ""
+}
+
+let skiaSourceRoot = recoverySkia ? requiredRecoveryEnv("SHAFT_SKIA_SOURCE_ROOT") : ""
+let skiaIcuSourceRoot = recoverySkia
+    ? URL(fileURLWithPath: skiaSourceRoot)
+        .deletingLastPathComponent()
+        .appendingPathComponent("icu/source/common")
+        .standardized.path
+    : ""
+let skiaCIncludeFlags = [skiaSourceRoot, skiaIcuSourceRoot]
+    .filter { !$0.isEmpty }
+    .map { "-I\($0)" }
+let skiaSwiftImportFlags = [skiaSourceRoot, skiaIcuSourceRoot]
+    .filter { !$0.isEmpty }
+    .flatMap { ["-Xcc", "-I\($0)"] }
+
 let package = Package(
     name: "Shaft",
 
@@ -116,14 +142,19 @@ let package = Package(
 
         .target(
             name: "CSkia",
-            dependencies: [
+            dependencies: recoverySkia ? [] : [
                 "skia"
             ],
             sources: [
                 "utils.cpp"
             ],
-            publicHeadersPath: ".",
-            cxxSettings: [
+            publicHeadersPath: recoverySkia ? "Public" : ".",
+            cSettings: recoverySkia ? [
+                .unsafeFlags(skiaCIncludeFlags)
+            ] : [],
+            cxxSettings: (recoverySkia ? [
+                .unsafeFlags(skiaCIncludeFlags)
+            ] : []) + [
                 .define("SK_FONTMGR_FONTCONFIG_AVAILABLE", .when(platforms: [.linux]))
             ],
             swiftSettings: [
@@ -230,7 +261,9 @@ let package = Package(
                 "SwiftMath",
                 "Shaft",
             ],
-            swiftSettings: [.interoperabilityMode(.Cxx)]
+            swiftSettings: [.interoperabilityMode(.Cxx)] + (recoverySkia ? [
+                .unsafeFlags(skiaSwiftImportFlags)
+            ] : [])
         ),
 
         .target(

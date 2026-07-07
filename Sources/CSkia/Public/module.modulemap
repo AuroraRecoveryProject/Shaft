@@ -1,5 +1,5 @@
 module CSkia {
     requires cplusplus
-    header "Public/utils.h"
+    header "utils.h"
     export *
 }
