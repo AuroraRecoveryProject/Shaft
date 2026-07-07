@@ -277,6 +277,16 @@ public class ScrollPosition: ChangeNotifier, ViewportOffset, ScrollMetrics {
         assertionFailure("Subclasses should override this method.")
     }
 
+    /// Applies a user drag offset to the scroll position.
+    ///
+    /// Pointer wheel scrolling and touch dragging have different input
+    /// semantics. A drag offset should be routed through the physics user-offset
+    /// hook so touch scrolling can move continuously with the finger instead of
+    /// behaving like a wheel scroll.
+    public func applyUserOffset(_ delta: Float) {
+        assertionFailure("Subclasses should override this method.")
+    }
+
     public var axisDirection: AxisDirection {
         context.axisDirection
     }

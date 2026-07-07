@@ -123,6 +123,22 @@ public class ScrollPositionWithSingleContext: ScrollPosition {
         }
     }
 
+    public override func applyUserOffset(_ delta: Float) {
+        if delta == 0.0 {
+            return
+        }
+
+        let appliedDelta = Float(physics.applyPhysicsToUserOffset(self, Double(delta)))
+        let targetPixels = (pixels! - appliedDelta).clamped(to: minScrollExtent...maxScrollExtent)
+
+        if targetPixels != pixels {
+            updateUserScrollDirection(
+                delta > 0.0 ? ScrollDirection.forward : ScrollDirection.reverse
+            )
+            forcePixels(targetPixels)
+        }
+    }
+
     public override var axisDirection: AxisDirection {
         context.axisDirection
     }

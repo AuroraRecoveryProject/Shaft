@@ -372,6 +372,46 @@ public final class ScrollableState: State<Scrollable>, ScrollContext {
         }
     }
 
+    private func handleDragUpdate(_ details: DragUpdateDetails) {
+        guard let delta = details.primaryDelta, delta != 0 else {
+            return
+        }
+        position?.applyUserOffset(delta)
+    }
+
+    private var scrollGestures: [GestureRecognizerFactory] {
+        switch widget.axisDirection.axis {
+        case .vertical:
+            return [
+                CallbackGestureRecognizerFactory<VerticalDragGestureRecognizer>(
+                    constructor: {
+                        VerticalDragGestureRecognizer()
+                    },
+                    initializer: { [weak self] recognizer in
+                        recognizer.dragStartBehavior = self?.widget.dragStartBehavior ?? .start
+                        recognizer.onUpdate = { [weak self] details in
+                            self?.handleDragUpdate(details)
+                        }
+                    }
+                )
+            ]
+        case .horizontal:
+            return [
+                CallbackGestureRecognizerFactory<HorizontalDragGestureRecognizer>(
+                    constructor: {
+                        HorizontalDragGestureRecognizer()
+                    },
+                    initializer: { [weak self] recognizer in
+                        recognizer.dragStartBehavior = self?.widget.dragStartBehavior ?? .start
+                        recognizer.onUpdate = { [weak self] details in
+                            self?.handleDragUpdate(details)
+                        }
+                    }
+                )
+            ]
+        }
+    }
+
     // Returns the delta that should result from applying [event] with axis,
     // direction, and any modifiers specified by the ScrollBehavior taken into
     // account.
@@ -486,7 +526,7 @@ public final class ScrollableState: State<Scrollable>, ScrollContext {
         // RawGestureDetector
         ScrollableScope(scrollable: self, position: position) {
             Listener(onPointerSignal: receivedPointerSignal) {
-                RawGestureDetector(gestures: [], behavior: .opaque) {
+                RawGestureDetector(gestures: scrollGestures, behavior: .opaque) {
                     widget.viewportBuilder(context, position!)
                 }
             }
