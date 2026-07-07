@@ -35,7 +35,9 @@ private func radiusIsValid(_ radius: Radius) -> Bool {
 }
 
 private func scaleAlpha(_ a: Color, _ factor: Float) -> Color {
-    return a.withAlpha(UInt8(round(Float(a.alpha) * factor)).clamped(to: 0...255))
+    // Use Float.rounded() instead of the global round() so Android Swift does not
+    // resolve this through the Double-only Foundation C math overload.
+    return a.withAlpha(UInt8((Float(a.alpha) * factor).rounded()).clamped(to: 0...255))
 }
 
 /// Algorithms to use when painting on the canvas.

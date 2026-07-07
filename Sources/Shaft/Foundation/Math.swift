@@ -48,12 +48,15 @@ extension Comparable {
 }
 
 extension BinaryFloatingPoint {
+    // Use the standard-library rounding APIs instead of Foundation.floor/ceil.
+    // Some Android Swift SDKs only expose the Foundation C math overloads for
+    // Double, while these helpers are generic over BinaryFloatingPoint.
     public func floor<T: BinaryInteger>() -> T {
-        return T(Foundation.floor(self))
+        return T(self.rounded(.down))
     }
 
     public func ceil<T: BinaryInteger>() -> T {
-        return T(Foundation.ceil(self))
+        return T(self.rounded(.up))
     }
 }
 

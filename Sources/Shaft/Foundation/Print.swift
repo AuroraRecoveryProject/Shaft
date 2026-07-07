@@ -3,7 +3,10 @@
 // found in the LICENSE file.
 
 import Foundation
+
+#if canImport(Rainbow)
 import Rainbow
+#endif
 
 /// Prints a formatted message with file, function, and line information.
 ///
@@ -27,5 +30,11 @@ public func mark(
         with: ""
     )
     let fileinfo = "[\(relativePath):\(line)]"
+    // Recovery builds omit Rainbow to keep the dependency set small, so keep
+    // the colored output only when the module is available.
+    #if canImport(Rainbow)
     print("\("INFO".green) \(time.cyan) \(fileinfo.magenta) \(function.yellow): \(message)")
+    #else
+    print("INFO \(time) \(fileinfo) \(function): \(message)")
+    #endif
 }
