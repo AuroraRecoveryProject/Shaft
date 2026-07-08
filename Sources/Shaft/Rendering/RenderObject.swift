@@ -135,6 +135,12 @@ public class PaintingContext: ClipContext {
         containerLayer.append(layer)
     }
 
+    /// Adds a prebuilt layer after closing any active display-list recording.
+    public func addLayer(_ layer: Layer) {
+        stopRecordingIfNeeded()
+        appendLayer(layer)
+    }
+
     /// Appends the given layer to the recording, and calls the `painter` callback
     /// with that layer, providing the `childPaintBounds` as the estimated paint
     /// bounds of the child. The `childPaintBounds` can be used for debugging but

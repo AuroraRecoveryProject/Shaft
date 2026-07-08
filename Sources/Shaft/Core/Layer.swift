@@ -14,7 +14,8 @@ public struct LayerPaintContext {
         self.canvas = canvas
     }
 
-    var canvas: Canvas
+    /// The final canvas used while composited layers are painted.
+    public var canvas: Canvas
 }
 
 public struct LayerTree {

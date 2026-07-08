@@ -27,11 +27,27 @@ import ShaftCodeHighlight
         return 1.0
     }
 
-
+    func recoveryRendererArgument() -> RecoverySkiaRendererMode {
+        let arguments = CommandLine.arguments
+        for (index, argument) in arguments.enumerated() {
+            if argument == "--renderer", index + 1 < arguments.count,
+               let mode = RecoverySkiaRendererMode(rawValue: arguments[index + 1])
+            {
+                return mode
+            }
+            if argument.hasPrefix("--renderer="),
+               let mode = RecoverySkiaRendererMode(rawValue: String(argument.dropFirst("--renderer=".count)))
+            {
+                return mode
+            }
+        }
+        return RecoverySkiaRendererMode.fromEnvironment()
+    }
 
     useRecoverySkiaBackend(
         stopAfterFirstFrame: false,
-        scale: recoveryScaleArgument()
+        scale: recoveryScaleArgument(),
+        rendererMode: recoveryRendererArgument()
     )
 #else
     ShaftSetup.useDefault()
@@ -68,6 +84,7 @@ final class PlaygroundState: State<Playground> {
             "TextField": Kit_TextField(),
             "Typography": Kit_Typography(),
             "3D Cube": Demo_Cube(),
+            "Shader": Demo_Shader(),
         ]
         #if !os(Android)
         pages["Hacker News"] = HackerNewsApp()
@@ -130,6 +147,7 @@ final class PlaygroundState: State<Playground> {
                     MenuTile("Hacker News")
                     #endif
                     MenuTile("3D Cube")
+                    MenuTile("Shader")
                     #if !os(Android)
                     MenuTile("Multi Window")
                     #endif
