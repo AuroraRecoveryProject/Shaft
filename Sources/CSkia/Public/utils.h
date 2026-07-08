@@ -1,5 +1,7 @@
-#if !defined(__ANDROID__)
 #define SK_GANESH
+#if defined(__ANDROID__)
+#define SK_VULKAN
+#else
 #define SK_GL
 #define SK_METAL
 #endif
@@ -101,6 +103,14 @@
 #endif
 
 #if defined(__ANDROID__)
+#include <include/gpu/ganesh/GrBackendSurface.h>
+#include <include/gpu/ganesh/GrDirectContext.h>
+#include <include/gpu/ganesh/SkSurfaceGanesh.h>
+#include <include/gpu/ganesh/vk/GrVkBackendSurface.h>
+#include <include/gpu/ganesh/vk/GrVkDirectContext.h>
+#include <include/gpu/ganesh/vk/GrVkTypes.h>
+#include <include/gpu/vk/VulkanBackendContext.h>
+#include <include/gpu/vk/VulkanExtensions.h>
 #include <include/ports/SkFontMgr_directory.h>
 #include <include/ports/SkFontMgr_empty.h>
 #endif
@@ -196,6 +206,7 @@ void sk_canvas_draw_image(SkCanvas *canvas, SkImage_sp &image, float x, float y,
 void sk_canvas_draw_image_rect(SkCanvas *canvas, SkImage_sp &image, const SkRect &src, const SkRect &dst, const SkPaint *paint);
 void sk_canvas_draw_image_nine(SkCanvas *canvas, SkImage_sp &image, const SkIRect &center, const SkRect &dst, const SkPaint *paint);
 void sk_canvas_draw_text_blob(SkCanvas *canvas, SkTextBlob_sp &blob, float x, float y, const SkPaint &paint);
+void sk_canvas_draw_runtime_shader_demo(SkCanvas *canvas, float width, float height, float time, float touchX, float touchY, float touchActive);
 void sk_canvas_clip_rect(SkCanvas *canvas, const SkRect &rect, SkClipOp op, bool doAntiAlias);
 void sk_canvas_clip_rrect(SkCanvas *canvas, const SkRRect &rrect, SkClipOp op, bool doAntiAlias);
 void sk_canvas_translate(SkCanvas *canvas, float dx, float dy);
@@ -219,6 +230,13 @@ SkCanvas *sk_surface_get_canvas(const sk_sp<SkSurface> &surface);
 SkSurface_sp sk_surface_make_raster_direct_rgba(int width, int height, void *pixels, size_t rowBytes);
 void sk_surface_flush(SkSurface_sp &surface);
 
+#if defined(__ANDROID__)
+void *sk_recovery_vulkan_surface_create(int width, int height);
+SkSurface_sp sk_recovery_vulkan_surface_get_surface(void *surface);
+bool sk_recovery_vulkan_surface_flush_and_read(void *surface, void *pixels, size_t rowBytes);
+bool sk_recovery_vulkan_surface_flush_and_get_pixels(void *surface, void **pixels, size_t *rowBytes);
+void sk_recovery_vulkan_surface_destroy(void *surface);
+#endif
 
 // MARK: - Image
 

@@ -11,6 +11,7 @@ void recovery_skia_shutdown(void);
 
 int recovery_skia_width(void);
 int recovery_skia_height(void);
+int recovery_skia_refresh_rate(void);
 int recovery_skia_row_bytes(void);
 void *recovery_skia_pixels(void);
 

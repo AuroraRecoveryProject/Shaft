@@ -58,6 +58,44 @@ public class SkiaCanvas: DirectCanvas {
         self.size = size
     }
 
+    #if os(Android)
+    /// Creates a canvas backed by a recovery Vulkan offscreen surface.
+    public init?(
+        recoveryVulkanSurface surfaceRef: UnsafeMutableRawPointer,
+        pixels: UnsafeMutableRawPointer,
+        rowBytes: Int,
+        size: ISize,
+        onFlush: @escaping () -> Void,
+        onPresentExternal: ((UnsafeMutableRawPointer, Int) -> Bool)? = nil
+    ) {
+        let surface = sk_recovery_vulkan_surface_get_surface(surfaceRef)
+        guard let skCanvas = sk_surface_get_canvas(surface) else {
+            return nil
+        }
+        self.skSurface = surface
+        self.skCanvas = skCanvas
+        self.flushImpl = { [surfaceRef] in
+            var externalPixels: UnsafeMutableRawPointer?
+            var externalRowBytes = 0
+            if let onPresentExternal,
+               sk_recovery_vulkan_surface_flush_and_get_pixels(
+                surfaceRef,
+                &externalPixels,
+                &externalRowBytes
+               ),
+               let externalPixels,
+               onPresentExternal(externalPixels, externalRowBytes)
+            {
+                return
+            }
+            if sk_recovery_vulkan_surface_flush_and_read(surfaceRef, pixels, rowBytes) {
+                onFlush()
+            }
+        }
+        self.size = size
+    }
+    #endif
+
     public let size: ISize
 
     /// The Skia canvas provided by the Skia surface.

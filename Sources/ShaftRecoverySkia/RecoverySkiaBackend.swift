@@ -21,6 +21,12 @@ private func recoveryLog(_ message: StaticString) {
     }
 }
 
+private func recoveryLog(_ message: String) {
+    message.withCString { chars in
+        recovery_skia_log_marker(chars)
+    }
+}
+
 public func recoverySkiaDebugLog(_ message: StaticString) {
     recoveryLog(message)
 }
@@ -39,20 +45,34 @@ private enum RecoveryTouchCoordinateSpace {
     }
 }
 
+public enum RecoverySkiaRendererMode: String {
+    case software
+    case vulkan
 
+    public static func fromEnvironment() -> Self {
+        if let rawValue = ProcessInfo.processInfo.environment["SHAFT_RECOVERY_RENDERER"],
+           let mode = Self(rawValue: rawValue)
+        {
+            return mode
+        }
+        return .software
+    }
+}
 
 public final class RecoverySkiaBackend: Backend {
     public init(
         renderer: SkiaRenderer = SkiaRenderer(),
         quitOnLastWindowClose: Bool = false,
         stopAfterFirstFrame: Bool = false,
-        devicePixelRatio: Float = 1.0
+        devicePixelRatio: Float = 1.0,
+        rendererMode: RecoverySkiaRendererMode = .software
     ) {
         self.renderer = renderer
         self.skiaRenderer = renderer
         self.quitOnLastWindowClose = quitOnLastWindowClose
         self.stopAfterFirstFrame = stopAfterFirstFrame
         self.devicePixelRatio = max(0.25, devicePixelRatio)
+        self.rendererMode = rendererMode
     }
 
     public let renderer: Renderer
@@ -68,6 +88,7 @@ public final class RecoverySkiaBackend: Backend {
     private var frameCount = 0
     private let start = ContinuousClock.now
     private let devicePixelRatio: Float
+    private let rendererMode: RecoverySkiaRendererMode
     private let touchCoordinateSpace = RecoveryTouchCoordinateSpace.fromEnvironment()
     private var pointerIdentifier = 0
     private var pointerIdentifiers: [Int: Int] = [:]
@@ -102,9 +123,12 @@ public final class RecoverySkiaBackend: Backend {
             rowBytes: Int(recovery_skia_row_bytes()),
             width: Int(recovery_skia_width()),
             height: Int(recovery_skia_height()),
-            devicePixelRatio: devicePixelRatio
+            devicePixelRatio: devicePixelRatio,
+            rendererMode: rendererMode
         )
-        recoveryLog("[shaft-recovery-skia] renderer=software")
+        if rendererMode == .software {
+            recoveryLog("[shaft-recovery-skia] renderer=software")
+        }
         nextViewID += 1
         views[view.viewID] = view
         lifecycleState = .resumed
@@ -305,7 +329,8 @@ public final class RecoverySkiaView: NativeView {
         rowBytes: Int,
         width: Int,
         height: Int,
-        devicePixelRatio: Float
+        devicePixelRatio: Float,
+        rendererMode: RecoverySkiaRendererMode
     ) {
         self.viewID = viewID
         self.backend = backend
@@ -314,6 +339,7 @@ public final class RecoverySkiaView: NativeView {
         self.rowBytes = rowBytes
         self.physicalSize = ISize(width, height)
         self.devicePixelRatio = devicePixelRatio
+        self.rendererMode = rendererMode
     }
 
     public let viewID: Int
@@ -325,19 +351,57 @@ public final class RecoverySkiaView: NativeView {
     private let renderer: SkiaRenderer
     private let pixels: UnsafeMutableRawPointer
     private let rowBytes: Int
+    private let rendererMode: RecoverySkiaRendererMode
     private let profileEnabled = ProcessInfo.processInfo.environment["SHAFT_RECOVERY_PROFILE"] != nil
+    private lazy var refreshRateHz = max(1, Int(recovery_skia_refresh_rate()))
     private var lastRenderStart: ContinuousClock.Instant?
+    private lazy var vulkanSurface: UnsafeMutableRawPointer? = {
+        guard rendererMode == .vulkan else { return nil }
+        guard let surface = sk_recovery_vulkan_surface_create(Int32(physicalSize.width), Int32(physicalSize.height)) else {
+            recoveryLog("[shaft-recovery-skia] renderer=vulkan unavailable; fallback=software")
+            return nil
+        }
+        recoveryLog("[shaft-recovery-skia] renderer=vulkan")
+        return surface
+    }()
 
+    deinit {
+        if let vulkanSurface {
+            sk_recovery_vulkan_surface_destroy(vulkanSurface)
+        }
+    }
 
     public func render(_ layerTree: LayerTree) {
         guard !isDestroyed else { return }
         let renderStart = ContinuousClock.now
-        let canvas = SkiaCanvas(
-            rasterPixels: pixels,
+        let canvas: SkiaCanvas
+        if let vulkanSurface,
+           let vulkanCanvas = SkiaCanvas(
+            recoveryVulkanSurface: vulkanSurface,
+            pixels: pixels,
             rowBytes: rowBytes,
             size: physicalSize,
-            onFlush: { recovery_skia_present() }
-        )
+            onFlush: { recovery_skia_present() },
+            onPresentExternal: { [physicalSize] externalPixels, externalRowBytes in
+                recovery_skia_present_external_rgba(
+                    externalPixels,
+                    Int32(externalRowBytes),
+                    Int32(physicalSize.width),
+                    Int32(physicalSize.height)
+                )
+               return true
+            }
+           )
+        {
+            canvas = vulkanCanvas
+        } else {
+            canvas = SkiaCanvas(
+                rasterPixels: pixels,
+                rowBytes: rowBytes,
+                size: physicalSize,
+                onFlush: { recovery_skia_present() }
+            )
+        }
         canvas.clear(color: .init(0xFF00_0000))
         layerTree.paint(context: LayerPaintContext(canvas: canvas))
         canvas.flush()
@@ -346,7 +410,9 @@ public final class RecoverySkiaView: NativeView {
             let renderUs = renderStart.duration(to: renderEnd).inMicroseconds
             let intervalUs = lastRenderStart.map { $0.duration(to: renderStart).inMicroseconds } ?? 0
             lastRenderStart = renderStart
-            print("[shaft-recovery-skia:profile] frame interval_us=\(intervalUs) render_us=\(renderUs)")
+            let rawFps = intervalUs > 0 ? 1_000_000.0 / Double(intervalUs) : 0
+            let fps = min(rawFps, Double(refreshRateHz))
+            recoveryLog("[shaft-recovery-skia:profile] frame interval_us=\(intervalUs) fps=\(String(format: "%.2f", fps)) refresh_hz=\(refreshRateHz) render_us=\(renderUs)")
         }
     }
 
@@ -364,11 +430,13 @@ public final class RecoverySkiaView: NativeView {
 
 public func useRecoverySkiaBackend(
     stopAfterFirstFrame: Bool = false,
-    scale: Float = 1.0
+    scale: Float = 1.0,
+    rendererMode: RecoverySkiaRendererMode = .software
 ) {
     guard !backendInitialized else { return }
     Shaft.backend = RecoverySkiaBackend(
         stopAfterFirstFrame: stopAfterFirstFrame,
-        devicePixelRatio: scale
+        devicePixelRatio: scale,
+        rendererMode: rendererMode
     )
 }

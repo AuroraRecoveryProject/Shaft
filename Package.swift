@@ -219,7 +219,9 @@ let package = Package(
                 "skia"
             ],
             sources: [
-                "utils.cpp"
+                "utils.cpp",
+                "recovery_vulkan.cpp",
+                "runtime_shader_demo.cpp"
             ],
             publicHeadersPath: recoverySkia ? "Public" : ".",
             cSettings: recoverySkia ? [

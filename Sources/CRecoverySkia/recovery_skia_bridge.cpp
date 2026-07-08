@@ -24,6 +24,7 @@ int gr_init(void);
 void gr_exit(void);
 int gr_fb_width(void);
 int gr_fb_height(void);
+int gr_get_refresh_rate(void);
 void gr_flip(void);
 int ev_init(void);
 void ev_exit(void);
@@ -356,6 +357,10 @@ int recovery_skia_width(void) {
 
 int recovery_skia_height(void) {
     return height;
+}
+
+int recovery_skia_refresh_rate(void) {
+    return gr_get_refresh_rate();
 }
 
 int recovery_skia_row_bytes(void) {
